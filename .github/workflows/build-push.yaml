@@ -1,0 +1,133 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+
+jobs:
+  build-backend:
+    name: Build Backend Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/backend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build Backend Image
+        run: |
+          # Set BUILD_COMMAND based on whether we are in 'act'
+          BUILD_COMMAND="docker build"
+          if [ "$ACT" == "true" ]; then
+            echo "Running locally via act, disabling BuildKit for compatibility."
+            BUILD_COMMAND="env DOCKER_BUILDKIT=0 docker build"
+          fi
+
+          TAGS=$(echo "${{ steps.meta.outputs.tags }}" | tr '\n' ' ')
+          TAG_ARGS=""
+          for tag in $TAGS; do
+            TAG_ARGS="$TAG_ARGS -t $tag"
+          done
+
+          $BUILD_COMMAND $TAG_ARGS \
+            --label "org.opencontainers.image.source=${{ github.event.repository.html_url }}" \
+            --label "org.opencontainers.image.revision=${{ github.sha }}" \
+            --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            -f ./src/backend/Containerfile \
+            .
+
+      - name: Push Backend Image
+        if: github.event_name != 'pull_request'
+        run: |
+          TAGS=$(echo "${{ steps.meta.outputs.tags }}" | tr '\n' ' ')
+          for tag in $TAGS; do
+            docker push "$tag"
+          done
+
+  build-frontend:
+    name: Build Frontend Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/frontend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build Frontend Image
+        run: |
+          # Set BUILD_COMMAND based on whether we are in 'act'
+          BUILD_COMMAND="docker build"
+          if [ "$ACT" == "true" ]; then
+            echo "Running locally via act, disabling BuildKit for compatibility."
+            BUILD_COMMAND="env DOCKER_BUILDKIT=0 docker build"
+          fi
+
+          TAGS=$(echo "${{ steps.meta.outputs.tags }}" | tr '\n' ' ')
+          TAG_ARGS=""
+          for tag in $TAGS; do
+            TAG_ARGS="$TAG_ARGS -t $tag"
+          done
+
+          $BUILD_COMMAND $TAG_ARGS \
+            --label "org.opencontainers.image.source=${{ github.event.repository.html_url }}" \
+            --label "org.opencontainers.image.revision=${{ github.sha }}" \
+            --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            -f ./src/frontend/Containerfile \
+            .
+
+      - name: Push Frontend Image
+        if: github.event_name != 'pull_request'
+        run: |
+          TAGS=$(echo "${{ steps.meta.outputs.tags }}" | tr '\n' ' ')
+          for tag in $TAGS; do
+            docker push "$tag"
+          done

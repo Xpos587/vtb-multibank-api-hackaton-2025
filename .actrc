@@ -1,0 +1,4 @@
+-P ubuntu-latest=docker.io/catthehacker/ubuntu:act-latest
+--container-daemon-socket unix://$XDG_RUNTIME_DIR/podman/podman.sock
+-s GITHUB_TOKEN=$GITHUB_PERSONAL_ACCESS_TOKEN
+--container-architecture=linux/amd64

@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "codealive": {
+      "type": "http",
+      "url": "https://mcp.codealive.ai/api",
+      "headers": {
+        "Authorization": "Bearer $CODEALIVE_API_KEY"
+      }
+    },
+    "pplx-research": {
+      "command": "uv",
+      "args": ["run", "--directory", ".mcps", "python", "pplx-research.py"]
+    },
+    "shadcn": {
+      "command": "bunx",
+      "args": ["shadcn@latest", "mcp"]
+    },
+    "notebooklm": {
+      "command": "bunx",
+      "args": ["notebooklm-mcp@latest"]
+    }
+  }
+}

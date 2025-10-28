@@ -1,0 +1,98 @@
+#!/bin/bash
+#
+# Git Flow Enforcement - Pre-Commit Hook
+# Prevents direct commits to protected branches (main, develop)
+# Scans for secrets with GitLeaks
+#
+
+BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null)
+
+# Protected branches
+PROTECTED_BRANCHES="^(main|master|develop)$"
+
+if [[ $BRANCH =~ $PROTECTED_BRANCHES ]]; then
+  echo ""
+  echo "❌ COMMIT REJECTED - Git Flow Enforcement"
+  echo ""
+  echo "Direct commits to '$BRANCH' are not allowed."
+  echo ""
+  echo "Please use git flow commands:"
+  echo ""
+  echo "  For new features:"
+  echo "    git flow feature start <feature-name>"
+  echo ""
+  echo "  For releases:"
+  echo "    git flow release start <version>"
+  echo ""
+  echo "  For hotfixes:"
+  echo "    git flow hotfix start <version>"
+  echo ""
+  exit 1
+fi
+
+# Security check - Scan for secrets with GitLeaks
+echo "🔍 Scanning for secrets with GitLeaks..."
+
+# Check if gitleaks is installed
+if ! command -v gitleaks &>/dev/null; then
+  echo "⚠️  Warning: 'gitleaks' not found, skipping secret scanning"
+  echo "   Install with: brew install gitleaks"
+else
+  # Check if we should skip gitleaks (for demo repos, etc.)
+  if [ -f ".gitleaks-skip" ]; then
+    echo "⏭️  Skipping GitLeaks scan (found .gitleaks-skip file)"
+  else
+    # Scan staged files for secrets
+    if ! gitleaks protect --staged --redact --verbose; then
+      echo ""
+      echo "❌ COMMIT BLOCKED: Secrets detected in staged files!"
+      echo ""
+      echo "🔧 How to fix:"
+      echo "1. Remove the secrets from your code"
+      echo "2. Use environment variables instead"
+      echo "3. Add secrets to .env (make sure .env is in .gitignore)"
+      echo "4. Consider using a secret management service"
+      echo ""
+      echo "📚 Learn more: https://gitleaks.io/docs/"
+      exit 1
+    fi
+
+    # Additional security checks
+    echo "🔒 Running additional security checks..."
+
+    # Check if .env files are accidentally staged
+    if git diff --cached --name-only | grep -E "^\.env$|^\.env\..*$" | grep -v "\.env\.example$|\.env\.template$"; then
+      echo ""
+      echo "❌ COMMIT BLOCKED: .env files should not be committed!"
+      echo "Run: git reset HEAD .env"
+      echo ""
+      exit 1
+    fi
+
+    # Check for security-related TODO/FIXME comments
+    if git diff --cached | grep -E "TODO.*security|FIXME.*security|XXX.*security|TODO.*password|TODO.*token|TODO.*key" >/dev/null; then
+      echo "⚠️  Warning: Security-related TODO/FIXME comments found"
+      echo "Please address these before production deployment"
+    fi
+
+    echo "✅ Security checks passed!"
+  fi
+fi
+
+# Run just format on staged files
+echo "🔧 Running code formatter..."
+if command -v just &>/dev/null; then
+  if just format; then
+    # Re-add formatted files to staging area
+    git diff --name-only --cached | xargs git add
+    echo "✅ Code formatted successfully"
+  else
+    echo "❌ Formatting failed"
+    exit 1
+  fi
+else
+  echo "⚠️  Warning: 'just' command not found, skipping formatting"
+fi
+
+echo "✅ All pre-commit checks passed!"
+exit 0
