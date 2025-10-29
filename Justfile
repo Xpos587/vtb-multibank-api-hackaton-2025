@@ -17,16 +17,16 @@ build-frontend:
 # Backend
 dev-backend:
     @echo "🐍 Backend dev..."
-    uv run python -m src.backend
+    uv run python -m backend
 
 format: format-backend format-frontend
     @echo "✅ All code formatting complete!"
 
 format-backend:
     echo "🎨 Formatting Python code with black..."
-    black src/backend
+    black backend
     echo "🔧 Fixing Python imports and style with ruff..."
-    ruff check --fix src/backend
+    ruff check --fix backend
 
 format-frontend:
     echo "🎨 Formatting React/TypeScript code..."
@@ -40,11 +40,11 @@ lint: lint-backend lint-frontend security-backend
 
 lint-backend:
     echo "🔍 Linting Python with ruff..."
-    ruff check src/backend
+    ruff check backend
     echo "🔍 Type checking with pyright..."
-    pyright src/backend
+    pyright backend
     echo "🔍 Checking for unused code with vulture..."
-    vulture src/backend
+    vulture backend
 
 lint-frontend:
     echo "🔍 Linting React/TypeScript..."
@@ -52,9 +52,9 @@ lint-frontend:
 
 security-backend:
     echo "🔒 Security analysis with Bandit..."
-    bandit -r src/backend -ll
+    bandit -r backend -ll
     echo "🔒 Scanning for secrets with Gitleaks..."
-    gitleaks detect --source src/backend --no-git --verbose
+    gitleaks detect --source backend --no-git --verbose
 
 analyze: format lint
     @echo "🎯 Full code analysis and formatting complete!"

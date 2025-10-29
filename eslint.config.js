@@ -8,7 +8,7 @@ import jsxA11y from "eslint-plugin-jsx-a11y";
 export default [
   js.configs.recommended,
   {
-    files: ["src/frontend/**/*.{ts,tsx,js,jsx}"],
+    files: ["frontend/**/*.{ts,tsx,js,jsx}"],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {

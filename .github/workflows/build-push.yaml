@@ -46,10 +46,8 @@ jobs:
 
       - name: Build Backend Image
         run: |
-          # Set BUILD_COMMAND based on whether we are in 'act'
           BUILD_COMMAND="docker build"
-          if [ "$ACT" == "true" ]; then
-            echo "Running locally via act, disabling BuildKit for compatibility."
+          if [ "$ACT" = "true" ]; then
             BUILD_COMMAND="env DOCKER_BUILDKIT=0 docker build"
           fi
 
@@ -63,7 +61,7 @@ jobs:
             --label "org.opencontainers.image.source=${{ github.event.repository.html_url }}" \
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
             --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-            -f ./src/backend/Containerfile \
+            -f ./backend/Containerfile \
             .
 
       - name: Push Backend Image
@@ -104,10 +102,8 @@ jobs:
 
       - name: Build Frontend Image
         run: |
-          # Set BUILD_COMMAND based on whether we are in 'act'
           BUILD_COMMAND="docker build"
-          if [ "$ACT" == "true" ]; then
-            echo "Running locally via act, disabling BuildKit for compatibility."
+          if [ "$ACT" = "true" ]; then
             BUILD_COMMAND="env DOCKER_BUILDKIT=0 docker build"
           fi
 
@@ -121,7 +117,7 @@ jobs:
             --label "org.opencontainers.image.source=${{ github.event.repository.html_url }}" \
             --label "org.opencontainers.image.revision=${{ github.sha }}" \
             --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-            -f ./src/frontend/Containerfile \
+            -f ./frontend/Containerfile \
             .
 
       - name: Push Frontend Image
