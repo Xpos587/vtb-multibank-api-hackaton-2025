@@ -161,7 +161,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Package source code
-        run: zip -r source-code.zip . -x@.distignore
+        run: zip -r source-code.zip . -x ".git/*" ".github/*" "node_modules/*" ".venv/*" ".ruff_cache/*" ".githooks/*" ".instruct/*" ".mcps/*" ".obsidian/*" "tools/*" ".mcp.json" "CLAUDE.md"
 
       - name: Create Release
         uses: ncipollo/release-action@v1
