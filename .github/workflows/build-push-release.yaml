@@ -149,10 +149,11 @@ jobs:
           only-severities: critical,high
           exit-code: false
           sarif-file: scout-results.sarif
+        continue-on-error: true
 
       - name: Upload Docker Scout results
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('scout-results.sarif') != ''
         with:
           sarif_file: 'scout-results.sarif'
           category: docker-scout-${{ matrix.service }}
