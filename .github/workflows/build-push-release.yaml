@@ -77,7 +77,7 @@ jobs:
       - name: Save image tags as artifact
         run: |
           mkdir -p /tmp/artifacts
-          echo '${{ steps.meta.outputs.tags }}' | jq -R . | jq -s . > /tmp/artifacts/tags.json
+          echo '${{ steps.meta.outputs.tags }}' | jq -R . | jq -sc . > /tmp/artifacts/tags.json
       - uses: actions/upload-artifact@v4
         with:
           name: image-tags-${{ matrix.service }}
