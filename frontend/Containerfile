@@ -10,14 +10,7 @@ RUN --mount=type=cache,target=/root/.cache/bun \
 
 COPY frontend/ ./frontend/
 
-RUN echo "=== Current directory ===" && pwd && \
-  echo "=== Files in /app ===" && ls -la /app && \
-  echo "=== Files in /app/frontend ===" && ls -la /app/frontend && \
-  echo "=== Content of tsconfig.json ===" && cat /app/tsconfig.json && \
-  echo "=== Content of package.json ===" && cat /app/package.json && \
-  echo "=== Content of build.ts ===" && cat /app/frontend/build.ts
-
-RUN bun run build
+RUN cd /app && bun run build
 
 FROM docker.io/oven/bun:alpine AS runtime
 

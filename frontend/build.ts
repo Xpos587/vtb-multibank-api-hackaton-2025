@@ -112,7 +112,7 @@ const formatFileSize = (bytes: number): string => {
 console.log('\n🚀 Starting build process...\n')
 
 const cliConfig = parseArgs()
-const outdir = cliConfig.outdir || path.join(process.cwd(), 'dist')
+const outdir = cliConfig.outdir || path.join(process.cwd(), 'frontend/dist')
 
 if (existsSync(outdir)) {
   console.log(`🗑️ Cleaning previous build at ${outdir}`)
@@ -122,7 +122,7 @@ if (existsSync(outdir)) {
 const start = performance.now()
 
 const entrypoints = [...new Bun.Glob('**.html').scanSync('frontend')]
-  .map(a => path.resolve('frontend', a))
+  .map(a => path.resolve('/app', a))
   .filter(dir => !dir.includes('node_modules'))
 console.log(
   `📄 Found ${entrypoints.length} HTML ${entrypoints.length === 1 ? 'file' : 'files'} to process\n`
