@@ -5,12 +5,13 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package.json bun.lock* ./
+COPY tsconfig.json ./
+
 RUN --mount=type=cache,target=/root/.cache/bun \
   bun install --frozen-lockfile
 
 COPY frontend/ ./frontend/
-COPY tsconfig.json ./
-WORKDIR /app/frontend
+
 RUN bun run build
 
 FROM docker.io/oven/bun:alpine AS runtime

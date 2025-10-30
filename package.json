@@ -6,9 +6,7 @@
   "scripts": {
     "dev": "bun --hot frontend/index.ts",
     "start": "NODE_ENV=production bun frontend/index.ts",
-    "build": "cd frontend && bun run build.ts",
-    "lint": "bun eslint frontend/**/*.{ts,tsx} --fix",
-    "format": "bun prettier --write frontend/**/*.{ts,tsx,json,css}"
+    "build": "cd frontend && bun run build.ts"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.7",

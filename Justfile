@@ -5,67 +5,82 @@ set quiet
 default:
     @just --list
 
-# Frontend
+# === Development ===
+
+# Start frontend development server
 dev-frontend:
-    @echo "🎨 Frontend dev..."
-    bun run start
+    @echo "🎨 Starting frontend dev server..."
+    bun --hot frontend/index.ts
 
-build-frontend:
-    @echo "🔨 Building frontend..."
-    bun run build
-
-# Backend
+# Start backend development server
 dev-backend:
-    @echo "🐍 Backend dev..."
+    @echo "🐍 Starting backend dev server..."
     uv run python -m backend
 
+# Build frontend for production
+build-frontend:
+    @echo "🔨 Building frontend..."
+    cd frontend && bun run build.ts
+
+# === Formatting ===
+
+# Format all code (backend + frontend)
 format: format-backend format-frontend
-    @echo "✅ All code formatting complete!"
+    @echo "✅ All code formatted!"
 
+# Format Python code
 format-backend:
-    echo "🎨 Formatting Python code with black..."
-    black backend
-    echo "🔧 Fixing Python imports and style with ruff..."
-    ruff check --fix backend
+    @echo "🎨 Formatting Python..."
+    @ruff format backend
+    @ruff check --fix --select I backend
 
+# Format TypeScript/React code
 format-frontend:
-    echo "🎨 Formatting React/TypeScript code..."
-    bun run format
+    @echo "🎨 Formatting TypeScript..."
+    @bun run prettier --write frontend/**/*.{ts,tsx,json,css}
+    @bun run eslint frontend/**/*.{ts,tsx} --fix
 
-# Reformat code (alias for format)
-reformat: format
+# === Linting ===
 
+# Run all linters and security checks
 lint: lint-backend lint-frontend security-backend
-    @echo "✅ All linting and SCA checks complete!"
-
-lint-backend:
-    echo "🔍 Linting Python with ruff..."
-    ruff check backend
-    echo "🔍 Type checking with pyright..."
-    pyright backend
-    echo "🔍 Checking for unused code with vulture..."
-    vulture backend
-
-lint-frontend:
-    echo "🔍 Linting React/TypeScript..."
-    bun run lint
-
-security-backend:
-    echo "🔒 Security analysis with Bandit..."
-    bandit -r backend -ll
-    echo "🔒 Scanning for secrets with Gitleaks..."
-    gitleaks detect --source backend --no-git --verbose
-
-analyze: format lint
-    @echo "🎯 Full code analysis and formatting complete!"
-
-# Quick check without formatting (CI/CD mode)
-check: lint-backend lint-frontend security-backend
     @echo "✅ All checks passed!"
 
-# Clean cache files and build artifacts
+# Lint Python code
+lint-backend:
+    @echo "🔍 Linting Python..."
+    @ruff check backend
+    @pyright backend
+
+# Lint TypeScript/React code
+lint-frontend:
+    @echo "🔍 Linting TypeScript..."
+    @bun run eslint frontend/**/*.{ts,tsx}
+
+# Run security checks on backend
+security-backend:
+    @echo "🔒 Running security checks..."
+    @bandit -r backend -ll
+    @gitleaks detect --source backend --no-git --no-banner
+
+# === Combined Commands ===
+
+# Format and lint everything
+analyze: format lint
+    @echo "🎯 Full analysis complete!"
+
+# Quick CI/CD check (no formatting)
+check: lint
+    @echo "✅ CI checks passed!"
+
+# === Cleanup ===
+
+# Clean Python cache files
 clean:
-    fd -t d "__pycache__" -x rm -rf {} 2>/dev/null || true
-    fd -t f "*.pyc" -x rm {} 2>/dev/null || true
-    fd -t d "*.egg-info" -x rm -rf {} 2>/dev/null || true
-    echo "✅ Cache cleaned!"
+    @echo "🧹 Cleaning cache..."
+    @fd -t d "__pycache__" -x rm -rf {} 2>/dev/null || true
+    @fd -t f "*.pyc" -x rm {} 2>/dev/null || true
+    @fd -t d "*.egg-info" -x rm -rf {} 2>/dev/null || true
+    @fd -t d ".ruff_cache" -x rm -rf {} 2>/dev/null || true
+    @rm -rf node_modules/.cache 2>/dev/null || true
+    @echo "✅ Cache cleaned!"
