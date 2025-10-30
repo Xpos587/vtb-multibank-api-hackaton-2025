@@ -77,11 +77,11 @@ jobs:
       - name: Save image tags as artifact
         run: |
           mkdir -p /tmp/artifacts
-          echo '${{ steps.meta.outputs.tags }}' > /tmp/artifacts/tags.txt
+          echo '["${{ steps.meta.outputs.tags | replace("," , '","') }}"]' > /tmp/artifacts/tags.json
       - uses: actions/upload-artifact@v4
         with:
           name: image-tags-${{ matrix.service }}
-          path: /tmp/artifacts/tags.txt
+          path: /tmp/artifacts/tags.json
 
   security-scan:
     name: Security Scan (${{ matrix.service }})
@@ -104,7 +104,7 @@ jobs:
 
       - name: Read tags
         id: image
-        run: echo "tags=$(cat /tmp/tags.txt)" >> $GITHUB_OUTPUT
+        run: echo "tags=$(cat /tmp/tags.json)" >> $GITHUB_OUTPUT
 
       - name: Generate SBOM
         uses: anchore/sbom-action@v0
