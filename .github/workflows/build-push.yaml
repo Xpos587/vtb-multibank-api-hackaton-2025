@@ -16,15 +16,31 @@ env:
   IMAGE_PREFIX: ${{ github.repository }}
 
 jobs:
-  build-backend:
-    name: Build Backend Image
+  build:
+    name: Build ${{ matrix.service }} Image
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+      id-token: write # Для attestations
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [backend, frontend]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
+            network=host
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -37,93 +53,108 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/backend
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
             type=sha,prefix={{branch}}-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=${{ matrix.service }}
+            org.opencontainers.image.description=${{ matrix.service }} service for ${{ github.repository }}
+            org.opencontainers.image.vendor=${{ github.repository_owner }}
 
-      - name: Build Backend Image
-        run: |
-          BUILD_COMMAND="docker build"
-          if [ "$ACT" = "true" ]; then
-            BUILD_COMMAND="env DOCKER_BUILDKIT=0 docker build"
-          fi
+      - name: Build and Push Docker Image
+        id: build-push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./${{ matrix.service }}/Containerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          sbom: true
+          provenance: mode=max
+          outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=${{ matrix.service }} service
 
-          TAGS=$(echo "${{ steps.meta.outputs.tags }}" | tr '\n' ' ')
-          TAG_ARGS=""
-          for tag in $TAGS; do
-            TAG_ARGS="$TAG_ARGS -t $tag"
-          done
-
-          $BUILD_COMMAND $TAG_ARGS \
-            --label "org.opencontainers.image.source=${{ github.event.repository.html_url }}" \
-            --label "org.opencontainers.image.revision=${{ github.sha }}" \
-            --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-            -f ./backend/Containerfile \
-            .
-
-      - name: Push Backend Image
+      - name: Generate SBOM Artifact
         if: github.event_name != 'pull_request'
-        run: |
-          TAGS=$(echo "${{ steps.meta.outputs.tags }}" | tr '\n' ' ')
-          for tag in $TAGS; do
-            docker push "$tag"
-          done
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ steps.meta.outputs.version }}
+          format: spdx-json
+          output-file: sbom-${{ matrix.service }}.spdx.json
 
-  build-frontend:
-    name: Build Frontend Image
+      - name: Upload SBOM
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.service }}
+          path: sbom-${{ matrix.service }}.spdx.json
+          retention-days: 90
+
+      - name: Run Trivy Security Scanner
+        if: github.event_name != 'pull_request'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ steps.meta.outputs.version }}
+          format: sarif
+          output: trivy-${{ matrix.service }}.sarif
+          severity: CRITICAL,HIGH
+
+      - name: Upload Trivy Results to GitHub Security
+        if: github.event_name != 'pull_request'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-${{ matrix.service }}.sarif
+          category: trivy-${{ matrix.service }}
+
+  security-scan:
+    name: Container Security Scan
+    needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      security-events: write
+    strategy:
+      matrix:
+        service: [backend, frontend]
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Run Docker Scout
+        uses: docker/scout-action@v1
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          command: cves
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:latest
+          only-severities: critical,high
+          exit-code: false
+          sarif-file: scout-${{ matrix.service }}.sarif
 
-      - name: Extract Metadata
-        id: meta
-        uses: docker/metadata-action@v5
+      - name: Upload Docker Scout Results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/frontend
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
+          sarif_file: scout-${{ matrix.service }}.sarif
+          category: docker-scout-${{ matrix.service }}
 
-      - name: Build Frontend Image
+  summary:
+    name: Build Summary
+    needs: build
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Summary
         run: |
-          BUILD_COMMAND="docker build"
-          if [ "$ACT" = "true" ]; then
-            BUILD_COMMAND="env DOCKER_BUILDKIT=0 docker build"
-          fi
-
-          TAGS=$(echo "${{ steps.meta.outputs.tags }}" | tr '\n' ' ')
-          TAG_ARGS=""
-          for tag in $TAGS; do
-            TAG_ARGS="$TAG_ARGS -t $tag"
-          done
-
-          $BUILD_COMMAND $TAG_ARGS \
-            --label "org.opencontainers.image.source=${{ github.event.repository.html_url }}" \
-            --label "org.opencontainers.image.revision=${{ github.sha }}" \
-            --label "org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-            -f ./frontend/Containerfile \
-            .
-
-      - name: Push Frontend Image
-        if: github.event_name != 'pull_request'
-        run: |
-          TAGS=$(echo "${{ steps.meta.outputs.tags }}" | tr '\n' ' ')
-          for tag in $TAGS; do
-            docker push "$tag"
-          done
+          echo "## Build Summary 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend | ${{ needs.build.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | ${{ needs.build.result == 'success' && '✅ Success' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry:** \`${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}\`" >> $GITHUB_STEP_SUMMARY

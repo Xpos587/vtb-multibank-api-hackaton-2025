@@ -1,33 +1,26 @@
-# Build stage - use full Bun image for compilation
-FROM docker.io/oven/bun:latest AS build
-
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+FROM docker.io/oven/bun:alpine AS build
 
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Install dependencies with cache mount for faster builds
 COPY package.json bun.lock* ./
 RUN --mount=type=cache,target=/root/.cache/bun \
   bun install --frozen-lockfile
 
-# Copy source code and build
-COPY . .
-WORKDIR /app
-RUN cd frontend && bun run build
+COPY frontend/ ./frontend/
+COPY tsconfig.json ./
+WORKDIR /app/frontend
+RUN bun run build
 
-# Production stage - Bun serving static files
-FROM docker.io/oven/bun:latest AS runtime
+FROM docker.io/oven/bun:alpine AS runtime
 
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Copy built static assets
 COPY --from=build /app/frontend/dist ./dist
 
 EXPOSE 3000
 
-# Use Bun to serve static files
 CMD ["bun", "serve", "dist", "--port", "3000"]

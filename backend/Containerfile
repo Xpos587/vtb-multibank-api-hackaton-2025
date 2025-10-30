@@ -1,6 +1,4 @@
-FROM alpine:3.20 AS build
-
-RUN apk add --no-cache ca-certificates curl
+FROM debian:bookworm-slim AS build
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
@@ -10,18 +8,21 @@ ENV UV_COMPILE_BYTECODE=1 \
   UV_LINK_MODE=copy
 
 COPY .python-version pyproject.toml uv.lock ./
-COPY backend ./backend
-
 RUN --mount=type=cache,target=/root/.cache/uv \
-  uv sync --frozen --no-dev
+  uv sync --frozen --no-install-project --no-dev
 
-# Distroless
+COPY backend ./backend
+RUN --mount=type=cache,target=/root/.cache/uv \
+  uv sync --frozen --no-dev --no-editable
+
+# Distroless runtime
 FROM gcr.io/distroless/python3-debian12:nonroot AS runtime
 
 WORKDIR /app
 
 ENV PATH="/app/.venv/bin:$PATH" \
-  PYTHONUNBUFFERED=1
+  PYTHONUNBUFFERED=1 \
+  PYTHONDONTWRITEBYTECODE=1
 
 COPY --from=build --chown=nonroot:nonroot /app/.venv /app/.venv
 COPY --from=build --chown=nonroot:nonroot /app/backend /app/backend
