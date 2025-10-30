@@ -2,8 +2,6 @@ FROM docker.io/oven/bun:alpine AS build
 
 WORKDIR /app
 
-ENV NODE_ENV=production
-
 COPY package.json bun.lock* ./
 COPY tsconfig.json ./
 
