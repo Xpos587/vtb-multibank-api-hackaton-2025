@@ -112,7 +112,7 @@ const formatFileSize = (bytes: number): string => {
 console.log('\n🚀 Starting build process...\n')
 
 const cliConfig = parseArgs()
-const outdir = cliConfig.outdir || path.join(process.cwd(), 'src/frontend/dist')
+const outdir = cliConfig.outdir || path.join(process.cwd(), 'dist')
 
 if (existsSync(outdir)) {
   console.log(`🗑️ Cleaning previous build at ${outdir}`)
@@ -135,7 +135,6 @@ const result = await Bun.build({
   minify: true,
   target: 'browser',
   sourcemap: 'linked',
-  root: process.cwd(),
   define: {
     'process.env.NODE_ENV': JSON.stringify('production'),
   },
