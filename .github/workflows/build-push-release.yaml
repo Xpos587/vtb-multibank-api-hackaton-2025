@@ -118,49 +118,29 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate SBOM
-        uses: anchore/sbom-action@v0
-        with:
-          image: ${{ fromJson(steps.image.outputs.tags)[0] }}
-          format: spdx-json
-          output-file: sbom.spdx.json
-
-      - name: Upload SBOM Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: sbom-${{ matrix.service }}
-          path: sbom.spdx.json
-
-      - name: Run Trivy Scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ fromJson(steps.image.outputs.tags)[0] }}
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
-
-      - name: Upload Trivy results as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-results-${{ matrix.service }}
-          path: trivy-results.sarif
-
-      - name: Run Docker Scout
+      - name: Run Docker Scout for CVEs and SBOM
         uses: docker/scout-action@v1
         with:
-          command: cves
+          command: cves, sbom
           image: ${{ fromJson(steps.image.outputs.tags)[0] }}
           only-severities: critical,high
-          exit-code: false
+          exit-code: true
           sarif-file: scout-results.sarif
-        continue-on-error: true
+          sbom-file: sbom.spdx.json
 
-      - name: Upload Docker Scout results as artifact
+      - name: Upload Docker Scout CVE results
         uses: actions/upload-artifact@v4
-        if: always() && hashFiles('scout-results.sarif') != ''
+        if: always()
         with:
           name: docker-scout-results-${{ matrix.service }}
           path: scout-results.sarif
+
+      - name: Upload SBOM Artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sbom-${{ matrix.service }}
+          path: sbom.spdx.json
 
   release:
     name: Create GitHub Release
@@ -174,7 +154,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Package source code
-        run: zip -r source-code.zip . -x ".git/*" ".github/*" "node_modules/*" ".venv/*" ".ruff_cache/*" ".githooks/*" ".instruct/*" ".mcps/*" ".obsidian/*" "tools/*" ".mcp.json" "CLAUDE.md"
+        run: zip -r source-code.zip . -x ".git/*" ".github/*" "node_modules/*" ".venv/*" ".ruff_cache/*" ".githooks/*" "docs/*" "tools/*" ".mcp.json" "CLAUDE.md"
 
       - name: Create Release
         uses: ncipollo/release-action@v1
