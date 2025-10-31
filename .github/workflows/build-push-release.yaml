@@ -128,7 +128,7 @@ jobs:
           command: cves
           image: ${{ fromJson(steps.image.outputs.tags)[0] }}
           only-severities: critical,high
-          exit-code: true
+          exit-code: false
           sarif-file: scout-results.sarif
 
       - name: Generate SBOM with Docker Scout

@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "fastapi>=0.120.0",
+  "fastapi>=0.120.3",
   "granian[reload,uvloop]>=2.5.5",
   "pydantic>=2.12.3",
 ]
@@ -15,8 +15,6 @@ dev = [
   "bandit>=1.8.6",
   "basedpyright>=1.32.1",
   "black>=25.9.0",
-  "fastmcp>=2.12.5",
-  "openai>=2.6.0",
   "ruff>=0.14.2",
   "vulture>=2.14",
 ]
