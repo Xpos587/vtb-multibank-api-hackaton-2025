@@ -10,7 +10,7 @@ RUN --mount=type=cache,target=/root/.cache/bun \
 
 COPY src/frontend/ ./frontend/
 
-RUN cd /app && bun run build
+RUN cd /app && bun run frontend/build.ts
 
 FROM docker.io/oven/bun:alpine AS runtime
 
