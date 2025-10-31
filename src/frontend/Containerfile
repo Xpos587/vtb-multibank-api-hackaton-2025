@@ -10,7 +10,10 @@ RUN --mount=type=cache,target=/root/.cache/bun \
 
 COPY src/frontend/ ./frontend/
 
-RUN cd /app && bun run frontend/build.ts
+# Create temporary tsconfig.json for container build
+RUN sed 's|"@/\*": \["\.\/src\/frontend\/\*"\]|"@/*": ["./frontend/*"]|' tsconfig.json > tsconfig.build.json
+
+RUN cd /app && bun run frontend/build.ts --outdir frontend/dist
 
 FROM docker.io/oven/bun:alpine AS runtime
 
