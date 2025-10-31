@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import plugin from 'bun-plugin-tailwind'
 import { existsSync } from 'fs'
+import { fileURLToPath } from 'url'
 import { rm } from 'fs/promises'
 import path from 'path'
 
@@ -121,8 +122,10 @@ if (existsSync(outdir)) {
 
 const start = performance.now()
 
-const entrypoints = [...new Bun.Glob('**.html').scanSync('frontend')]
-  .map(a => path.resolve('/app', 'frontend', a))
+const scriptDir = path.dirname(fileURLToPath(import.meta.url))
+
+const entrypoints = [...new Bun.Glob('**.html').scanSync(scriptDir)]
+  .map(file => path.resolve(scriptDir, file))
   .filter(dir => !dir.includes('node_modules'))
 console.log(
   `📄 Found ${entrypoints.length} HTML ${entrypoints.length === 1 ? 'file' : 'files'} to process\n`
