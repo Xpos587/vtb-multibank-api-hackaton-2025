@@ -1,0 +1,52 @@
+#!/bin/bash
+#
+# Pre-Commit Hook: Git Flow Enforcement + Security Checks
+#
+
+set -e
+
+BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null)
+
+# 1. Protect main/develop branches
+if [[ $BRANCH =~ ^(main|master|develop)$ ]]; then
+  echo ""
+  echo "❌ Direct commits to '$BRANCH' are not allowed."
+  echo ""
+  echo "Use git flow:"
+  echo "  git flow feature start <name>"
+  echo "  git flow release start <version>"
+  echo "  git flow hotfix start <version>"
+  echo ""
+  exit 1
+fi
+
+# 2. Security scan with GitLeaks
+if command -v gitleaks &>/dev/null && [ ! -f ".gitleaks-skip" ]; then
+  echo "🔍 Scanning for secrets..."
+  if ! gitleaks protect --staged --redact --no-banner; then
+    echo ""
+    echo "❌ Secrets detected! Remove them and use environment variables."
+    echo "   Learn more: https://gitleaks.io/docs/"
+    echo ""
+    exit 1
+  fi
+fi
+
+# 3. Block .env files (except examples)
+if git diff --cached --name-only | grep -E "^\.env(\..+)?$" | grep -vE "\.(example|template)$"; then
+  echo ""
+  echo "❌ .env files should not be committed!"
+  echo "   Run: git reset HEAD .env"
+  echo ""
+  exit 1
+fi
+
+# 4. Format code with just
+if command -v just &>/dev/null; then
+  echo "🔧 Formatting code..."
+  just format
+  git diff --name-only --cached | xargs -r git add
+fi
+
+echo "✅ Pre-commit checks passed!"
+exit 0
