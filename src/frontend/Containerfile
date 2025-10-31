@@ -10,8 +10,8 @@ RUN --mount=type=cache,target=/root/.cache/bun \
 
 COPY src/frontend/ ./frontend/
 
-# Create temporary tsconfig.json for container build
-RUN sed 's|"@/\*": \["\.\/src\/frontend\/\*"\]|"@/*": ["./frontend/*"]|' tsconfig.json > tsconfig.build.json
+# Create symlink to match tsconfig.json paths
+RUN ln -s frontend src
 
 RUN cd /app && bun run frontend/build.ts --outdir frontend/dist
 
