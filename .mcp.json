@@ -4,19 +4,17 @@
       "type": "http",
       "url": "https://mcp.codealive.ai/api",
       "headers": {
-        "Authorization": "Bearer $CODEALIVE_API_KEY"
-      }
-    },
-    "context7": {
-      "type": "http",
-      "url": "https://mcp.context7.com/mcp",
-      "headers": {
-        "CONTEXT7_API_KEY": "$CONTEXT7_API_KEY"
+        "Authorization": "Bearer ca_1760801267370_FljAjTSaNt80c7dQY8MKlsG6_OoBRpIz97PhWQ3gjP0"
       }
     },
     "vibe-annotations": {
       "type": "http",
       "url": "http://127.0.0.1:3846/mcp"
+    },
+    "context7": {
+      "type": "stdio",
+      "command": "bunx",
+      "args": ["@upstash/context7-mcp"]
     },
     "shadcn": {
       "type": "stdio",
@@ -26,7 +24,10 @@
     "morphllm-fast-apply": {
       "type": "stdio",
       "command": "bunx",
-      "args": ["@morph-llm/morph-fast-apply"]
+      "args": ["@morph-llm/morph-fast-apply"],
+      "env": {
+        "MORPH_API_KEY": ""
+      }
     },
     "sequential-thinking": {
       "type": "stdio",

@@ -295,6 +295,7 @@ $RECYCLE.BIN/
 
 # Claude workspace
 .claude
+.mcp.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python,windows,linux,macos,dotenv,react,venv,visualstudiocode
 

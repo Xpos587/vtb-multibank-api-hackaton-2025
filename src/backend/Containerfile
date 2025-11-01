@@ -11,7 +11,7 @@ COPY .python-version pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
   uv sync --frozen --no-install-project --no-dev
 
-COPY src/backend ./backend
+COPY src ./src
 RUN --mount=type=cache,target=/root/.cache/uv \
   uv sync --frozen --no-dev --no-editable
 
@@ -27,8 +27,8 @@ ENV PATH="/app/.venv/bin:$PATH" \
   PYTHONDONTWRITEBYTECODE=1
 
 COPY --from=build --chown=nonroot:nonroot /app/.venv /app/.venv
-COPY --from=build --chown=nonroot:nonroot /app/backend /app/backend
+COPY --from=build --chown=nonroot:nonroot /app/src /app/src
 
 EXPOSE 8000
 
-CMD ["python", "-m", "backend"]
+CMD ["python", "-m", "src.backend"]
